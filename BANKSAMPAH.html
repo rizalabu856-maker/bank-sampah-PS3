@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS3 ADMIN - Manajemen Bank Sampah</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .active-tab { background-color: #059669; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div id="app" class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-emerald-800 text-white transition-all duration-300 flex flex-col">
+            <div class="p-6 flex items-center gap-3 border-b border-emerald-700">
+                <div class="bg-white p-1.5 rounded-lg text-emerald-800">
+                    <i data-lucide="recycle" size="24"></i>
+                </div>
+                <span class="sidebar-text font-bold text-lg tracking-tight uppercase">PS3 ADMIN</span>
+            </div>
+            
+            <nav class="flex-1 mt-6 px-3 space-y-2">
+                <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-item w-full flex items-center gap-4 p-3 rounded-xl transition-all hover:bg-emerald-700/50 text-emerald-100">
+                    <i data-lucide="layout-dashboard" size="20"></i>
+                    <span class="sidebar-text font-medium">Dashboard</span>
+                </button>
+                <button onclick="switchTab('nasabah')" id="btn-nasabah" class="nav-item w-full flex items-center gap-4 p-3 rounded-xl transition-all hover:bg-emerald-700/50 text-emerald-100">
+                    <i data-lucide="users" size="20"></i>
+                    <span class="sidebar-text font-medium">Nasabah</span>
+                </button>
+                <button onclick="switchTab('kategori')" id="btn-kategori" class="nav-item w-full flex items-center gap-4 p-3 rounded-xl transition-all hover:bg-emerald-700/50 text-emerald-100">
+                    <i data-lucide="settings" size="20"></i>
+                    <span class="sidebar-text font-medium">Kategori Sampah</span>
+                </button>
+                <div class="border-t border-emerald-700 my-2 pt-2">
+                    <button onclick="switchTab('transaksi')" id="btn-transaksi" class="nav-item w-full flex items-center gap-4 p-3 rounded-xl transition-all hover:bg-emerald-700/50 text-emerald-100">
+                        <i data-lucide="plus-circle" size="20"></i>
+                        <span class="sidebar-text font-medium">Transaksi Baru</span>
+                    </button>
+                    <button onclick="switchTab('riwayat')" id="btn-riwayat" class="nav-item w-full flex items-center gap-4 p-3 rounded-xl transition-all hover:bg-emerald-700/50 text-emerald-100">
+                        <i data-lucide="history" size="20"></i>
+                        <span class="sidebar-text font-medium">Riwayat</span>
+                    </button>
+                </div>
+            </nav>
+
+            <button onclick="toggleSidebar()" class="p-4 hover:bg-emerald-700 flex justify-center border-t border-emerald-700">
+                <i data-lucide="menu" id="toggle-icon"></i>
+            </button>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8">
+            <header class="mb-8 flex justify-between items-center">
+                <div>
+                    <h1 id="page-title" class="text-2xl font-bold capitalize">Dashboard</h1>
+                    <p class="text-gray-500">Sistem Administrasi Bank Sampah Digital</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="bg-white shadow-sm border px-4 py-2 rounded-full flex items-center gap-2">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-medium">Sistem Online (HTML Mode)</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Container for dynamic content -->
+            <div id="content-area"></div>
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modal-root"></div>
+
+    <script>
+        // --- State Management ---
+        let activeTab = 'dashboard';
+        let isSidebarOpen = true;
+        
+        let nasabah = [
+            { id: '1', nama: 'Budi Santoso', alamat: 'Jl. Merdeka No. 1', saldo: 50000, joined: '2023-10-01' },
+            { id: '2', nama: 'Siti Aminah', alamat: 'Jl. Mawar No. 12', saldo: 25000, joined: '2023-11-15' },
+        ];
+
+        let transaksi = [
+            { id: 't1', nasabahId: '1', jenis: 'Setor', kategori: 'Plastik', berat: 2, totalHarga: 10000, tanggal: '2023-12-01' },
+            { id: 't2', nasabahId: '2', jenis: 'Setor', kategori: 'Kertas', berat: 5, totalHarga: 7500, tanggal: '2023-12-02' },
+        ];
+
+        let kategoriSampah = [
+            { id: 'k1', nama: 'Plastik', harga: 5000 },
+            { id: 'k2', nama: 'Kertas', harga: 1500 },
+            { id: 'k3', nama: 'Logam', harga: 10000 },
+            { id: 'k4', nama: 'Kaca', harga: 3000 },
+            { id: 'k5', nama: 'Organik', harga: 500 },
+        ];
+
+        // --- Core Functions ---
+        function init() {
+            render();
+            lucide.createIcons();
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            render();
+        }
+
+        function toggleSidebar() {
+            isSidebarOpen = !isSidebarOpen;
+            const sidebar = document.getElementById('sidebar');
+            const texts = document.querySelectorAll('.sidebar-text');
+            const icon = document.getElementById('toggle-icon');
+
+            if (isSidebarOpen) {
+                sidebar.classList.remove('w-20');
+                sidebar.classList.add('w-64');
+                texts.forEach(t => t.classList.remove('hidden'));
+                icon.setAttribute('data-lucide', 'x');
+            } else {
+                sidebar.classList.remove('w-64');
+                sidebar.classList.add('w-20');
+                texts.forEach(t => t.classList.add('hidden'));
+                icon.setAttribute('data-lucide', 'menu');
+            }
+            lucide.createIcons();
+        }
+
+        // --- Renderers ---
+        function render() {
+            // Update Active Class in Sidebar
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active-tab'));
+            document.getElementById(`btn-${activeTab}`).classList.add('active-tab');
+            
+            // Update Header Title
+            document.getElementById('page-title').innerText = activeTab.replace('-', ' ');
+
+            const contentArea = document.getElementById('content-area');
+            
+            if (activeTab === 'dashboard') {
+                const totalSaldo = nasabah.reduce((acc, curr) => acc + curr.saldo, 0);
+                const totalSampah = transaksi.filter(t => t.jenis === 'Setor').reduce((acc, curr) => acc + curr.berat, 0);
+
+                contentArea.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        ${renderStatCard('Total Nasabah', nasabah.length, 'users', 'bg-blue-50', 'text-blue-600')}
+                        ${renderStatCard('Saldo Terkumpul', 'Rp ' + totalSaldo.toLocaleString(), 'wallet', 'bg-emerald-50', 'text-emerald-600')}
+                        ${renderStatCard('Sampah Terkelola', totalSampah + ' Kg', 'recycle', 'bg-orange-50', 'text-orange-600')}
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h2 class="text-lg font-bold mb-4">Aktivitas Terakhir</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="border-b text-gray-400 text-sm uppercase">
+                                        <th class="pb-3 font-semibold">Nasabah</th>
+                                        <th class="pb-3 font-semibold">Jenis</th>
+                                        <th class="pb-3 font-semibold">Jumlah</th>
+                                        <th class="pb-3 font-semibold text-right">Tanggal</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y">
+                                    ${transaksi.slice(0, 5).map(t => {
+                                        const n = nasabah.find(item => item.id === t.nasabahId);
+                                        return `
+                                            <tr class="hover:bg-gray-50 transition-colors">
+                                                <td class="py-4 font-medium">${n ? n.nama : 'Unknown'}</td>
+                                                <td class="py-4">
+                                                    <span class="px-2 py-1 rounded-md text-xs font-bold ${t.jenis === 'Setor' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                                        ${t.jenis}
+                                                    </span>
+                                                </td>
+                                                <td class="py-4 font-mono">Rp ${t.totalHarga.toLocaleString()}</td>
+                                                <td class="py-4 text-right text-sm text-gray-500">${t.tanggal}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            } else if (activeTab === 'nasabah') {
+                contentArea.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold">Daftar Nasabah</h2>
+                        <button onclick="showAddNasabahModal()" class="bg-emerald-600 text-white px-6 py-2 rounded-xl flex items-center gap-2 hover:bg-emerald-700 font-semibold shadow-md transition-all active:scale-95">
+                             Tambah Nasabah
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${nasabah.map(n => `
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow group relative">
+                                <button onclick="deleteNasabah('${n.id}')" class="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                    <i data-lucide="trash-2" size="18"></i>
+                                </button>
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="bg-emerald-100 p-3 rounded-full text-emerald-700">
+                                        <i data-lucide="users" size="24"></i>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs text-gray-400 uppercase font-bold">Saldo</p>
+                                        <p class="text-lg font-bold text-emerald-600">Rp ${n.saldo.toLocaleString()}</p>
+                                    </div>
+                                </div>
+                                <h3 class="text-lg font-bold">${n.nama}</h3>
+                                <p class="text-sm text-gray-500 mt-1">${n.alamat}</p>
+                                <div class="mt-4 pt-4 border-t flex justify-between items-center text-xs text-gray-400">
+                                    <span>ID: ${n.id}</span>
+                                    <span>Bergabung: ${n.joined}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (activeTab === 'kategori') {
+                contentArea.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold">Daftar Harga & Kategori</h2>
+                        <button onclick="showKategoriModal()" class="bg-emerald-600 text-white px-6 py-2 rounded-xl flex items-center gap-2 hover:bg-emerald-700 font-semibold shadow-md transition-all active:scale-95">
+                            Tambah Kategori
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${kategoriSampah.map(item => `
+                            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between group">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-sm text-gray-400 font-bold uppercase tracking-wider">Kategori</p>
+                                        <h3 class="text-xl font-bold text-gray-800">${item.nama}</h3>
+                                    </div>
+                                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onclick="showKategoriModal('${item.id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><i data-lucide="edit-2" size="16"></i></button>
+                                        <button onclick="deleteKategori('${item.id}')" class="p-2 text-red-600 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" size="16"></i></button>
+                                    </div>
+                                </div>
+                                <div class="mt-6 pt-4 border-t flex items-center justify-between">
+                                    <span class="text-gray-500 text-sm">Harga / Kg</span>
+                                    <span class="text-xl font-bold text-emerald-600 font-mono">Rp ${item.harga.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (activeTab === 'transaksi') {
+                contentArea.innerHTML = `
+                    <div class="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                        <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                            <i data-lucide="recycle" class="text-emerald-600"></i> Form Transaksi Baru
+                        </h2>
+                        <form onsubmit="handleTransaction(event)" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-semibold mb-1">Nasabah</label>
+                                    <select required id="tx-nasabah" class="w-full px-4 py-2 border rounded-xl bg-gray-50 outline-none">
+                                        <option value="">Pilih Nasabah</option>
+                                        ${nasabah.map(n => `<option value="${n.id}">${n.nama}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold mb-1">Jenis Transaksi</label>
+                                    <select id="tx-jenis" onchange="toggleTxForm()" class="w-full px-4 py-2 border rounded-xl bg-gray-50 outline-none">
+                                        <option value="Setor">Setoran Sampah</option>
+                                        <option value="Tarik">Penarikan Tunai</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="tx-details-area"></div>
+                            <button type="submit" class="w-full py-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 font-bold text-lg shadow-lg transition-all active:scale-[0.98]">
+                                Konfirmasi Transaksi
+                            </button>
+                        </form>
+                    </div>
+                `;
+                toggleTxForm();
+            } else if (activeTab === 'riwayat') {
+                contentArea.innerHTML = `
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="p-6 border-b flex justify-between items-center bg-gray-50/50">
+                            <h2 class="text-lg font-bold">Log Transaksi Keseluruhan</h2>
+                            <div class="text-sm text-gray-500 font-medium">Total: ${transaksi.length} Transaksi</div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="bg-gray-100 text-gray-500 text-xs uppercase tracking-wider">
+                                        <th class="px-6 py-4 font-bold">Tanggal</th>
+                                        <th class="px-6 py-4 font-bold">Nasabah</th>
+                                        <th class="px-6 py-4 font-bold">Jenis</th>
+                                        <th class="px-6 py-4 font-bold">Detail</th>
+                                        <th class="px-6 py-4 font-bold text-right">Nominal</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    ${transaksi.map(t => {
+                                        const n = nasabah.find(item => item.id === t.nasabahId);
+                                        return `
+                                            <tr class="hover:bg-emerald-50/30 transition-colors group">
+                                                <td class="px-6 py-4 text-sm font-medium text-gray-600">${t.tanggal}</td>
+                                                <td class="px-6 py-4">
+                                                    <div class="font-bold">${n ? n.nama : 'Unknown'}</div>
+                                                    <div class="text-xs text-gray-400">ID: ${t.nasabahId}</div>
+                                                </td>
+                                                <td class="px-6 py-4">
+                                                    <div class="flex items-center gap-1.5 w-fit px-3 py-1 rounded-full text-xs font-bold ${t.jenis === 'Setor' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                                        ${t.jenis}
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4">
+                                                    ${t.jenis === 'Setor' ? `<span class="text-sm text-gray-600">${t.kategori} • <span class="font-bold">${t.berat} Kg</span></span>` : '<span class="text-sm text-gray-400 italic">Penarikan Tunai</span>'}
+                                                </td>
+                                                <td class="px-6 py-4 text-right font-bold font-mono ${t.jenis === 'Setor' ? 'text-emerald-600' : 'text-red-600'}">
+                                                    ${t.jenis === 'Setor' ? '+' : '-'} Rp ${t.totalHarga.toLocaleString()}
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        function renderStatCard(title, value, icon, bgColor, iconColor) {
+            return `
+                <div class="p-6 rounded-2xl shadow-sm border border-gray-100 bg-white flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">${title}</p>
+                        <p class="text-2xl font-bold mt-1">${value}</p>
+                    </div>
+                    <div class="p-4 rounded-xl ${bgColor} ${iconColor}">
+                        <i data-lucide="${icon}"></i>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Transaction Logic ---
+        function toggleTxForm() {
+            const jenis = document.getElementById('tx-jenis').value;
+            const container = document.getElementById('tx-details-area');
+            
+            if (jenis === 'Setor') {
+                container.innerHTML = `
+                    <div class="p-6 bg-emerald-50 rounded-2xl space-y-4 border border-emerald-100">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Kategori Sampah</label>
+                                <select id="tx-kategori" onchange="calcTx()" class="w-full px-4 py-2 border rounded-xl bg-white outline-none">
+                                    ${kategoriSampah.map(k => `<option value="${k.nama}">${k.nama} (Rp ${k.harga}/kg)</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Berat (Kg)</label>
+                                <input type="number" step="0.1" id="tx-berat" oninput="calcTx()" class="w-full px-4 py-2 border rounded-xl bg-white outline-none" value="0">
+                            </div>
+                        </div>
+                        <div class="pt-4 border-t border-emerald-200 flex justify-between items-center">
+                            <span class="font-semibold text-emerald-800 text-sm">Estimasi Pendapatan:</span>
+                            <span class="text-2xl font-bold text-emerald-700 font-mono" id="tx-estimasi">Rp 0</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="p-6 bg-red-50 rounded-2xl border border-red-100">
+                        <label class="block text-sm font-semibold mb-1 text-red-800">Jumlah Penarikan (Rp)</label>
+                        <input type="number" id="tx-tarik" class="w-full px-4 py-2 border border-red-200 rounded-xl bg-white text-2xl font-bold text-red-700 outline-none" placeholder="0">
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        function calcTx() {
+            const katNama = document.getElementById('tx-kategori').value;
+            const berat = parseFloat(document.getElementById('tx-berat').value) || 0;
+            const kat = kategoriSampah.find(k => k.nama === katNama);
+            const total = berat * (kat ? kat.harga : 0);
+            document.getElementById('tx-estimasi').innerText = 'Rp ' + total.toLocaleString();
+            return total;
+        }
+
+        function handleTransaction(e) {
+            e.preventDefault();
+            const nasabahId = document.getElementById('tx-nasabah').value;
+            const jenis = document.getElementById('tx-jenis').value;
+            let total = 0;
+            let detail = {};
+
+            if (jenis === 'Setor') {
+                const berat = parseFloat(document.getElementById('tx-berat').value);
+                const katNama = document.getElementById('tx-kategori').value;
+                const kat = kategoriSampah.find(k => k.nama === katNama);
+                total = berat * kat.harga;
+                detail = { berat, kategori: katNama };
+            } else {
+                total = parseInt(document.getElementById('tx-tarik').value);
+            }
+
+            if (total <= 0) return alert('Jumlah harus lebih dari 0');
+
+            const newTx = {
+                id: Date.now().toString(),
+                nasabahId,
+                jenis,
+                totalHarga: total,
+                tanggal: new Date().toISOString().split('T')[0],
+                ...detail
+            };
+
+            transaksi.unshift(newTx);
+            
+            // Update Saldo
+            const idx = nasabah.findIndex(n => n.id === nasabahId);
+            if (idx !== -1) {
+                nasabah[idx].saldo += (jenis === 'Setor' ? total : -total);
+            }
+
+            alert('Transaksi Berhasil!');
+            switchTab('riwayat');
+        }
+
+        // --- CRUD Modals ---
+        function showAddNasabahModal() {
+            const modalRoot = document.getElementById('modal-root');
+            modalRoot.innerHTML = `
+                <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl">
+                        <h2 class="text-xl font-bold mb-6">Pendaftaran Nasabah Baru</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Nama Lengkap</label>
+                                <input id="new-nama" class="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Alamat</label>
+                                <textarea id="new-alamat" class="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" rows="3"></textarea>
+                            </div>
+                            <div class="flex gap-3 mt-8">
+                                <button onclick="closeModal()" class="flex-1 py-3 border rounded-xl hover:bg-gray-50 font-semibold">Batal</button>
+                                <button onclick="saveNasabah()" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-semibold">Simpan</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveNasabah() {
+            const nama = document.getElementById('new-nama').value;
+            const alamat = document.getElementById('new-alamat').value;
+            if (!nama) return;
+
+            nasabah.push({
+                id: Math.random().toString(36).substr(2, 5),
+                nama, alamat, saldo: 0, 
+                joined: new Date().toISOString().split('T')[0]
+            });
+            closeModal();
+            render();
+        }
+
+        function deleteNasabah(id) {
+            if (confirm('Hapus nasabah ini?')) {
+                nasabah = nasabah.filter(n => n.id !== id);
+                render();
+            }
+        }
+
+        function showKategoriModal(id = null) {
+            const item = id ? kategoriSampah.find(k => k.id === id) : null;
+            const modalRoot = document.getElementById('modal-root');
+            modalRoot.innerHTML = `
+                <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl">
+                        <h2 class="text-xl font-bold mb-6">${id ? 'Edit' : 'Tambah'} Kategori</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Nama Sampah</label>
+                                <input id="kat-nama" value="${item ? item.nama : ''}" class="w-full px-4 py-2 border rounded-xl outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Harga per Kg (Rp)</label>
+                                <input type="number" id="kat-harga" value="${item ? item.harga : ''}" class="w-full px-4 py-2 border rounded-xl outline-none">
+                            </div>
+                            <div class="flex gap-3 mt-8">
+                                <button onclick="closeModal()" class="flex-1 py-3 border rounded-xl hover:bg-gray-50 font-semibold">Batal</button>
+                                <button onclick="saveKategori('${id || ''}')" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-semibold">Simpan</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveKategori(id) {
+            const nama = document.getElementById('kat-nama').value;
+            const harga = parseInt(document.getElementById('kat-harga').value);
+            if (id) {
+                const idx = kategoriSampah.findIndex(k => k.id === id);
+                kategoriSampah[idx] = { ...kategoriSampah[idx], nama, harga };
+            } else {
+                kategoriSampah.push({ id: 'k' + Date.now(), nama, harga });
+            }
+            closeModal();
+            render();
+        }
+
+        function deleteKategori(id) {
+            if (confirm('Hapus kategori ini?')) {
+                kategoriSampah = kategoriSampah.filter(k => k.id !== id);
+                render();
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal-root').innerHTML = '';
+        }
+
+        // --- Start App ---
+        window.onload = init;
+    </script>
+</body>
+</html>
